@@ -1,0 +1,51 @@
+using SpecialFunctions 
+using Base.MathConstants
+
+
+struct GOE <: Model end
+
+
+#first argument of all functions is the model 
+
+function level_spacing_pdf(goe::GOE, s; n=1)
+    #Wigner surmises for higher orders Wen-Jia Rao
+    beta = 1.0 #level repulsion
+    a = 0.5*n*(n+1.0)*beta + n -1
+    A =  (gamma(0.5*a + 1.0)/gamma(0.5*a + 0.5) )^2.0 
+    C = (2.0*(gamma(0.5*a + 1.0))^(a + 1.0)) / ((gamma(0.5*a + 0.5))^(a + 2.0))
+    return @. C * s^a * exp(-A * s^2.0)
+end
+
+function level_spacing_cdf(goe::GOE, s; n=1)
+    beta = 1.0 #level repulsion
+    a = 0.5*n*(n+1.0)*beta + n -1
+    A =  (gamma(0.5*a + 1.0)/gamma(0.5*a + 0.5) )^2.0 
+    C = (2.0*(gamma(0.5*a + 1.0))^(a + 1.0)) / ((gamma(0.5*a + 0.5))^(a + 2.0))
+    return @. 0.5*C*s^(1.0 + a)*(A*s^2.0)^(0.5*(-1.0 - a))*(gamma((1.0 + a)*0.5) - gamma((1.0 + a)*0.5, A*s^2.0))
+end
+
+function level_spacing_u(goe::GOE, s)
+    return @. (2.0 / pi) * arccos(sqrt(1.0 - level_spacing_cdf(goe, s)))    
+end
+
+function number_variance(goe::GOE, l) 
+    arg = 2.0 * pi .* l
+    si, ci = sinint.(arg), cosint.(arg) 
+    nv_gue = @. 1.0/pi^2.0 * (log(arg) + eulergamma + 1.0 - cos(arg) - ci) + l * (1.0 - 2.0/pi * si)    
+    si2 = sinint.(pi*l)
+    return @. 2.0 * nv_gue + si2^2.0/pi^2.0 - si2/pi
+end 
+
+function rigidity(goe::GOE, l)
+    beta = 1.0
+    nv = @. 2.0/(beta*pi^2.0)*(log(beta*pi*l) + eulergamma + 1.0)#approximate formula
+    #nv = number_variance(goe, l)
+    return @. 0.5 * nv - 9.0/(4.0*beta*pi^2.0)
+end
+
+function spectral_form_factor(goe::GOE, t)
+    sff = @. 2.0 * t - t * log(1.0 + 2.0 * t)
+    idx = t.> 1.0
+    sff[idx] = @. 2.0 - t[idx] * log((1.0 + 2.0 * t[idx])/(2.0 * t[idx] - 1.0))    
+    return sff
+end
